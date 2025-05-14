@@ -1,115 +1,150 @@
-from django.db import models
-from django.urls import reverse, NoReverseMatch
-from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError
+from django.db import models
+from django.urls import NoReverseMatch, reverse
+from django.utils.translation import gettext_lazy as _
 import logging
+from typing import Optional  # For type hinting
 
-logger = logging.getLogger(__name__)  # Standard logger for this module
+logger = logging.getLogger(__name__)
 
 
 class MenuItem(models.Model):
-    # --- Core Fields ---
+    """
+    Represents an item in a hierarchical, named menu.
+    Menus are rendered via a template tag and support dynamic expansion
+    based on the current URL.
+    """
+
     name = models.CharField(
         _("Display Name"), max_length=100, help_text=_("Visible name of the menu item.")
     )
-    menu_name = (
-        models.CharField(  # Groups items into a specific menu (e.g., 'main_menu')
-            _("Menu Name"),
-            max_length=50,
-            db_index=True,  # Improves query performance when filtering by menu_name
-            help_text=_("Identifier for the menu (e.g., 'main_menu', 'sidebar_menu')."),
-        )
+    menu_name = models.CharField(
+        _("Menu Name"),
+        max_length=50,
+        db_index=True,  # Essential for efficient querying of specific menus
+        help_text=_("Identifier for the menu (e.g., 'main_menu', 'sidebar_menu')."),
     )
-    parent = models.ForeignKey(  # Self-referential FK for hierarchical structure
+    parent = models.ForeignKey(
         "self",
         verbose_name=_("Parent Item"),
         null=True,
-        blank=True,  # Root items have no parent
-        related_name="children",  # Access children via item.children.all()
-        on_delete=models.CASCADE,  # Deleting a parent deletes its children
+        blank=True,  # Allows for root (top-level) menu items
+        related_name="children",  # Enables item.children.all()
+        on_delete=models.CASCADE,  # Standard for hierarchical data integrity
         help_text=_("Select parent for sub-menu; leave blank for top-level."),
     )
-    # --- URL Configuration ---
-    url = models.CharField(  # For static, explicit URLs
+    url = models.CharField(
         _("Explicit URL"),
-        max_length=255,
+        max_length=2048,  # Standard max URL length (RFC 2616)
         blank=True,
-        help_text=_("Direct URL (e.g., /about/). Used if Named URL is blank or fails."),
+        help_text=_(
+            "Direct URL (e.g., /about/). Used if Named URL is blank or fails to resolve."
+        ),
     )
-    named_url = models.CharField(  # For URLs resolved via Django's 'reverse()'
+    named_url = models.CharField(
         _("Named URL"),
-        max_length=100,
+        max_length=100,  # Typically, named URLs are not excessively long
         blank=True,
-        help_text=_("URL pattern name (e.g., 'app:view'). Takes precedence if valid."),
+        help_text=_(
+            "URL pattern name (e.g., 'app_name:view_name'). Takes precedence if valid."
+        ),
     )
-    # --- Display & Ordering ---
     order = models.IntegerField(
         _("Order"),
         default=0,
-        help_text=_("Sort order within the same parent/level (lower numbers first)."),
+        help_text=_(
+            "Sort order within the same parent/level (lower numbers appear first)."
+        ),
     )
 
     class Meta:
         verbose_name = _("Menu Item")
         verbose_name_plural = _("Menu Items")
-        # Default ordering for queries and admin display.
-        # `parent__id` assists in some scenarios, though tree building is explicit in the tag.
+        # Default ordering ensures consistent behavior in queries and admin.
+        # `parent__id` helps to group items, though the tree is built explicitly by the templatetag.
         ordering = ["menu_name", "parent__id", "order", "name"]
 
-    def __str__(self):
-        # Informative string representation for admin/debug.
+    def __str__(self) -> str:
         parent_status = (
-            " (Root)" if not self.parent_id else f" (Parent ID: {self.parent_id})"
+            " (Root)"
+            if not self.parent_id
+            else f" (Parent: {self.parent.name if self.parent else 'N/A'})"
         )
         return f"'{self.name}' [{self.menu_name}]{parent_status}"
 
-    def get_resolved_url(self):
-        # Determines the item's actual URL, prioritizing named_url.
+    def get_resolved_url(self) -> str:
+        """
+        Determines the item's display URL, prioritizing named_url.
+        Returns '#' as a fallback if no valid URL can be determined.
+        """
         if self.named_url:
             try:
                 return reverse(self.named_url)
             except NoReverseMatch:
                 logger.warning(
-                    f"MenuItem ID {self.pk}: Named URL '{self.named_url}' failed to resolve. Falling back to explicit URL."
+                    f"MenuItem (ID: {self.pk}, Name: '{self.name}'): "
+                    f"Named URL '{self.named_url}' failed to resolve. Falling back."
                 )
-                return self.url or "#"  # Fallback to explicit or placeholder
-        return self.url or "#"  # Use explicit URL or placeholder if no named_url
+                # Fallback to explicit URL if named_url resolution fails
+                return self.url or "#"
+        # Use explicit URL if no named_url is provided
+        return self.url or "#"
 
-    def clean(self):
-        # Custom model validation. Called by ModelForms (admin) and explicitly in save().
+    def clean(self) -> None:
+        """
+        Performs model-level validation before saving.
+        Ensures data integrity, e.g., preventing circular dependencies.
+        """
         super().clean()
 
         # Prevent circular parent-child relationships.
-        if self.parent_id:
-            ancestor = self.parent
+        if self.parent_id:  # Only proceed if a parent is actually assigned
+            # Check against self to prevent item being its own parent
+            if self.parent_id == self.pk and self.pk is not None:
+                raise ValidationError(
+                    {"parent": _("An item cannot be its own parent.")}
+                )
+
+            # Traverse up the ancestor chain to detect cycles
+            ancestor: Optional["MenuItem"] = self.parent
             visited_pks = {
                 self.parent_id
             }  # Track visited ancestors to detect pre-existing loops
+
             while ancestor:
-                if ancestor.pk == self.pk:  # Cannot be its own (grand)parent
+                if (
+                    ancestor.pk == self.pk
+                ):  # Current item found in its own ancestor chain
                     raise ValidationError(
                         {
                             "parent": _(
-                                "Circular dependency: Item cannot be its own ancestor."
+                                "Circular dependency: Item cannot be an ancestor of itself."
                             )
                         }
                     )
-                if (
-                    ancestor.parent_id in visited_pks
-                ):  # Safety against pre-existing corrupted data
+                # Check for loops in potentially corrupted existing data by tracking visited parent PKs
+                if ancestor.parent_id and ancestor.parent_id in visited_pks:
                     logger.error(
-                        f"MenuItem ID {self.pk}: Loop detected in parent chain at parent ID {ancestor.parent_id} during validation."
+                        f"MenuItem (ID: {self.pk}): Loop detected in parent chain via parent ID "
+                        f"{ancestor.parent_id} during validation. Data might be corrupted."
                     )
-                    break
-                if ancestor.parent_id:  # Add only if there's a next parent to visit
+                    # Optionally, raise an error here if strict data integrity is paramount
+                    # raise ValidationError({'parent': _("Corrupted parent chain detected (loop).")})
+                    break  # Stop traversal to prevent infinite loop
+                if ancestor.parent_id:
                     visited_pks.add(ancestor.parent_id)
                 ancestor = ancestor.parent
 
-        # Ensure menu_name is provided.
+        # Ensure menu_name is provided and not just whitespace.
         if not self.menu_name or not self.menu_name.strip():
-            raise ValidationError({"menu_name": _("Menu Name is required.")})
+            raise ValidationError(
+                {"menu_name": _("Menu Name is required and cannot be empty.")}
+            )
 
-    def save(self, *args, **kwargs):
-        # Ensures all model validations (including clean()) run on every save.
-        self.full_clean()
+    def save(self, *args, **kwargs) -> None:
+        """
+        Overrides the default save method to ensure full_clean() is called,
+        enforcing all model validations even for programmatic saves.
+        """
+        self.full_clean()  # Calls field validation, model clean(), and unique constraint checks
         super().save(*args, **kwargs)
