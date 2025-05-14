@@ -95,6 +95,13 @@ This is a Django application that implements a tree-like menu. The menu is rende
     python manage.py createsuperuser
     ```
 
+6.  **Start the development server:**
+    ```bash
+    python manage.py runserver
+    ```
+    The server will typically start on `http://127.0.0.1:8000/`.
+
+
 ### Configuration
 
 1.  **Access the Django Admin Panel:**
@@ -245,6 +252,12 @@ You can find example URL configurations and a sample page template (`page_exampl
     ```bash
     python manage.py createsuperuser
     ```
+
+6.  **Запустите сервер разработки:**
+    ```bash
+    python manage.py runserver
+    ```
+    Сервер обычно запускается по адресу `http://127.0.0.1:8000/`.
 
 ### Конфигурация
 
