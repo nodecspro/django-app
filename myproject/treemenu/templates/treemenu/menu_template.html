@@ -1,0 +1,11 @@
+{% load menu_tags %}
+
+{% if menu_nodes %}
+<nav class="menu-container menu-{{ menu_name|slugify }}">
+    <ul>
+        {% for item in menu_nodes %}
+            {% include "treemenu/menu_recursive_item.html" %}
+        {% endfor %}
+    </ul>
+</nav>
+{% endif %}

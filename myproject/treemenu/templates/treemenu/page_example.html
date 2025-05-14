@@ -1,0 +1,42 @@
+{% load menu_tags %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Menu Test Page</title>
+    <style>
+        .menu-container ul { list-style-type: none; padding-left: 20px; }
+        .menu-container li { margin: 5px 0; }
+        .menu-container li a { text-decoration: none; color: blue; }
+        .menu-container li.active > a { font-weight: bold; color: red; }
+        .menu-container li.expanded > a::before { content: "[-] "; }
+        .menu-container li.collapsed > a::before { content: "[+] "; } /* Only if children exist but not expanded */
+
+        /* Example: Specific styling for 'main-menu' */
+        .menu-main-menu { border: 1px solid #ccc; padding: 10px; }
+        .menu-sidebar-menu { background-color: #f0f0f0; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Current Page: {{ request.path }}</h1>
+
+    <h2>Main Menu (draw_menu 'main_menu')</h2>
+    {% draw_menu 'main_menu' %}
+
+    <hr>
+
+    <h2>Sidebar Menu (draw_menu 'sidebar_menu')</h2>
+    {% draw_menu 'sidebar_menu' %}
+
+    <hr>
+    <p>
+        Navigate to:
+        <a href="{% url 'treemenu_home' %}">Home</a> |
+        <a href="{% url 'treemenu_about' %}">About</a> |
+        <a href="{% url 'treemenu_services' %}">Services</a> |
+        <a href="{% url 'treemenu_services_web' %}">Services > Web</a> |
+        <a href="{% url 'treemenu_services_mobile' %}">Services > Mobile</a> |
+        <a href="{% url 'treemenu_contact' %}">Contact</a>
+    </p>
+</body>
+</html>

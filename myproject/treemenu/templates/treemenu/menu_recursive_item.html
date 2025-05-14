@@ -1,0 +1,10 @@
+<li class="{% if item.pk == active_item_pk %}active{% endif %} {% if item.children_nodes %}has-children{% endif %} {% if item.children_nodes and item.pk in expanded_pks %}expanded{% else %}collapsed{% endif %}">
+    <a href="{{ item.resolved_url }}">{{ item.name }}</a>
+    {% if item.children_nodes and item.pk in expanded_pks %}
+        <ul>
+            {% for child_item in item.children_nodes %}
+                {% include "treemenu/menu_recursive_item.html" with item=child_item active_item_pk=active_item_pk expanded_pks=expanded_pks %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</li>

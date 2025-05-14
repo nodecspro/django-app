@@ -1,0 +1,50 @@
+from django.urls import path
+from django.views.generic import TemplateView
+
+urlpatterns = [
+    path(
+        "",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_home",
+    ),
+    path(
+        "about/",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_about",
+    ),
+    path(
+        "services/",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_services",
+    ),
+    path(
+        "services/web/",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_services_web",
+    ),
+    path(
+        "services/mobile/",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_services_mobile",
+    ),
+    path(
+        "contact/",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_contact",
+    ),
+    path(
+        "profile/",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_profile",
+    ),
+    path(
+        "settings/",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_settings",
+    ),
+    path(
+        "settings/account/",
+        TemplateView.as_view(template_name="treemenu/page_example.html"),
+        name="treemenu_settings_account",
+    ),
+]
