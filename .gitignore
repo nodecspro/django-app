@@ -2,6 +2,7 @@
 __pycache__/
 myproject/treemenu/__pycache__/
 myproject/myproject/__pycache__/
+myproject/treemenu/templatetags/__pycache__/
 *.pyc
 *.pyo
 *.pyd

@@ -9,7 +9,6 @@ from typing import (
 from django import template
 from django.db.models import QuerySet
 from django.http import HttpRequest
-from django.urls import reverse, NoReverseMatch
 
 from ..models import MenuItem  # Relative import for the MenuItem model
 
@@ -56,9 +55,7 @@ def _process_menu_items(
         if item.resolved_url == current_path:
             active_item = item
 
-        item.children_nodes: List[MenuItemProcessed] = (
-            []
-        )  # Initialize for storing child items
+        item.children_nodes = []  # Initialize for storing child items
         items_by_id[item.id] = item
         all_items_processed.append(item)
 
