@@ -1,6 +1,5 @@
 # Python bytecode
 __pycache__/
-**/__pycache__/
 *.pyc
 *.pyo
 *.pyd
@@ -8,3 +7,4 @@ __pycache__/
 # Log files
 *.log
 logs/
+myproject/treemenu/__pycache__/
